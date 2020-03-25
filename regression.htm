@@ -1,0 +1,90 @@
+<style>
+
+canvas {
+    width: 600px;
+    height: 600px;
+    border: 1px black solid;
+    margin: 20px;
+}
+
+</style>
+<canvas></canvas>
+<script src="libs/common.js"></script>
+<script src="libs/regression.min.js"></script>
+<script>
+
+const canvas = document.querySelector('canvas');
+const context = canvas.getContext('2d');
+canvas.width = canvas.height = 600;
+let points = [];
+const resolution = 100;
+
+//let test = [83,84,81,71,33,34,81,85,86,90,81,35,33,78,88,88,90,84,36,34,83,91,88,83,81,34,36,84,87,85];
+let test = [9, 9, 9, 9, 9, 9, 9, 9, 13, 13, 13, 13, 16, 20, 23, 36, 39, 51, 87, 116, 164, 209, 278, 321, 383, 460, 590, 798, 1140, 1391, 1543, 1950, 2626, 3269, 3983, 5018, 5683, 6650, 8077];
+for (let i = 0; i < test.length; i++) {
+    points.push(vec(i + 1, test[i]));
+}
+draw();
+
+// canvas.onclick = e => {
+//     points.push(vec(e.offsetX, e.offsetY));
+//     draw();
+// };
+
+function draw() {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let p of points) {
+        drawPoint(p);
+    }
+
+    if (points.length > 1) {
+        const data = points.map(p => vec.components(p));
+
+        // Linear
+        const linear = regression.linear(data);
+        console.log(`%cLinear ${linear.string}, r2 = ${linear.r2}`, 'color: #f33');
+        drawLine(x => linear.equation[0] * x + linear.equation[1], 'red');
+
+        // Exponential
+        const exponential = regression.exponential(data);
+        console.log(`%cExponential ${exponential.string}, r2 = ${exponential.r2}`, 'color: #3f3');
+        drawLine(x => exponential.equation[0] * Math.exp(x * exponential.equation[1]), 'green');
+
+        // Logarithmic
+        const logarithmic = regression.logarithmic(data);
+        console.log(`%cLogarithmic ${logarithmic.string}, r2 = ${logarithmic.r2}`, 'color: #33f');
+        drawLine(x => logarithmic.equation[0] + logarithmic.equation[1] * Math.log(x), 'blue');
+
+        // Power
+        // const power = regression.power(data);
+        // console.log(`%cPower ${power.string}, r2 = ${power.r2}`, 'color: #f3f');
+        // drawLine(x => power.equation[0] * Math.pow(x, power.equation[1]), 'purple');
+    }
+}
+
+function drawPoint(p) {
+    context.save();
+    context.translate(p.x * 20, canvas.height - p.y);
+    context.beginPath();
+    context.arc(0, 0, 2, 0, Math.PI * 2);
+    context.fillStyle = 'black';
+    context.fill();
+    context.restore();
+}
+
+function drawLine(f, color) {
+    context.save();
+    context.strokeStyle = color;
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(0, f(0));
+    const step = 20;//canvas.width / resolution;
+    for (let x = 0, px = 0; px < canvas.width; x++, px += step) {
+        context.lineTo(px, canvas.height - f(x));
+    }
+    context.stroke();
+    context.restore();
+}
+
+</script>
