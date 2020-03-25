@@ -6,6 +6,11 @@ canvas {
     border: 1px black solid;
     margin: 20px;
 }
+textarea {
+    display: block;
+    width: 600px;
+    height: 100px;
+}
 
 </style>
 <canvas></canvas>
@@ -43,19 +48,19 @@ function draw() {
         const data = points.map(p => vec.components(p));
 
         // Linear
-        const linear = regression.linear(data);
-        output(`%cLinear ${linear.string}, r2 = ${linear.r2}`, 'color: #f33');
-        drawLine(x => linear.equation[0] * x + linear.equation[1], 'red');
+        //const linear = regression.linear(data);
+        //output(`Linear ${linear.string}, r2 = ${linear.r2}`, 'color: #f33');
+        //drawLine(x => linear.equation[0] * x + linear.equation[1], 'red');
 
         // Exponential
         const exponential = regression.exponential(data);
-        output(`%cExponential ${exponential.string}, r2 = ${exponential.r2}`, 'color: #3f3');
+        output(`Exponential ${exponential.string}, r2 = ${exponential.r2}`, 'color: #3f3');
         drawLine(x => exponential.equation[0] * Math.exp(x * exponential.equation[1]), 'green');
 
         // Logarithmic
-        const logarithmic = regression.logarithmic(data);
-        output(`%cLogarithmic ${logarithmic.string}, r2 = ${logarithmic.r2}`, 'color: #33f');
-        drawLine(x => logarithmic.equation[0] + logarithmic.equation[1] * Math.log(x), 'blue');
+        //const logarithmic = regression.logarithmic(data);
+        //output(`Logarithmic ${logarithmic.string}, r2 = ${logarithmic.r2}`, 'color: #33f');
+        //drawLine(x => logarithmic.equation[0] + logarithmic.equation[1] * Math.log(x), 'blue');
 
         // Power
         // const power = regression.power(data);
