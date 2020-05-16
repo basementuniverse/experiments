@@ -1,0 +1,72 @@
+<style>
+
+canvas {
+    width: 800px;
+    height: 800px;
+    border: 1px black solid;
+    margin: 2em;
+}
+
+</style>
+<canvas></canvas>
+<script src="libs/common.js"></script>
+<script src="libs/dat.gui.min.js"></script>
+<script>
+
+const canvas = document.querySelector('canvas');
+const context = canvas.getContext('2d');
+canvas.width = canvas.height = 800;
+
+const settings = {
+    n: 100,
+    r: 0.5
+};
+
+const gui = new dat.GUI();
+gui.add(settings, 'n', 5, 100).onChange(draw);
+gui.add(settings, 'r', 0, 3).onChange(draw);
+
+const q1 = (t) => -settings.r * Math.pow(t, 3) + 2 * settings.r * Math.pow(t, 2) - settings.r * t;
+const q2 = (t) => (2 - settings.r) * Math.pow(t, 3) + (settings.r - 3) * Math.pow(t, 2) + 1;
+const q3 = (t) => (settings.r - 2) * Math.pow(t, 3) + (3 - 2 * settings.r) * Math.pow(t, 2) + settings.r * t;
+const q4 = (t) => settings.r * Math.pow(t, 3) - settings.r * Math.pow(t, 2);
+
+const points = [];
+canvas.onclick = e => {
+    points.push(vec(e.offsetX, e.offsetY));
+    draw();
+};
+
+function draw() {
+    context.clearRect(0, 0, 800, 800);
+    if (points.length >= 4) {
+        for (let i = 1; i < points.length - 2; i++) {
+            drawSegment(points[i - 1], points[i], points[i + 1], points[i + 2]);
+        }
+    }
+    for (let i = 0; i < points.length; i++) {
+        dot(points[i], (i == 0 || i == points.length - 1) ? 'red' : 'green', 4);
+    }
+}
+
+function drawSegment(p1, p2, p3, p4) {
+    for (let t = 0; t <= 1; t += 1 / settings.n) {
+        let p = vec(
+            p1.x * q1(t) + p2.x * q2(t) + p3.x * q3(t) + p4.x * q4(t),
+            p1.y * q1(t) + p2.y * q2(t) + p3.y * q3(t) + p4.y * q4(t)
+        );
+        dot(p, 'rgba(0, 0, 0, 0.4)');
+    }
+}
+
+function dot(p, c, r = 2) {
+    context.save();
+    context.translate(p.x, p.y);
+    context.beginPath();
+    context.arc(0, 0, r, 0, Math.PI * 2);
+    context.fillStyle = c;
+    context.fill();
+    context.restore();
+}
+
+</script>

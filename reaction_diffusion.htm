@@ -1,0 +1,232 @@
+<script src="libs/common.js"></script>
+<script src="libs/dat.gui.min.js"></script>
+<script src="libs/hammer.min.js"></script>
+<canvas></canvas>
+<script>
+
+// Reaction-diffusion simulation using Gray-Scott model
+
+const SIZE = 300;
+const MATRIX = [
+    0.05,   0.2,    0.05,
+    0.2,    -1,     0.2,
+    0.05,   0.2,    0.05
+];
+const settings = {
+    color1: [200, 0, 0],
+    color2: [240, 255, 0],
+    color3: [30, 30, 30],
+    drawRadius: 5,
+    timescale: 10,
+    diffusionA: 1,
+    diffusionB: 0.5,
+    preset: 'default',
+    feedRate: 0.037,
+    killRate: 0.06,
+    clear: init
+};
+const presets = {
+    default: {
+        feedRate: 0.037,
+        killRate: 0.06
+    },
+    solitons: {
+        feedRate: 0.03,
+        killRate: 0.062
+    },
+    pulsatingSolitons: {
+        feedRate: 0.025,
+        killRate: 0.06
+    },
+    worms: {
+        feedRate: 0.078,
+        killRate: 0.061
+    },
+    mazes: {
+        feedRate: 0.029,
+        killRate: 0.057
+    },
+    holes: {
+        feedRate: 0.039,
+        killRate: 0.058
+    },
+    chaos: {
+        feedRate: 0.026,
+        killRate: 0.051
+    },
+    chaosHoles: {
+        feedRate: 0.034,
+        killRate: 0.056
+    },
+    movingSpots: {
+        feedRate: 0.014,
+        killRate: 0.054
+    },
+    spotsLoops: {
+        feedRate: 0.018,
+        killRate: 0.051
+    },
+    waves: {
+        feedRate: 0.014,
+        killRate: 0.045
+    },
+    uSkateWorld: {
+        feedRate: 0.062,
+        killRate: 0.061
+    }
+};
+
+const canvas = document.querySelector('canvas');
+canvas.width = canvas.style.width = SIZE;
+canvas.height = canvas.style.height = SIZE;
+canvas.style.border = '1px black solid';
+const context = canvas.getContext('2d');
+let lastFrameTime = performance.now();
+let grid = null;
+let prev = null;
+
+function init() {
+    grid = [];
+    prev = [];
+    for (let i = SIZE * SIZE; i--;) {
+        grid.push({ a: 1, b: 0 });
+        prev.push({ a: 1, b: 0 });
+    }
+}
+init();
+
+function loop() {
+    const now = performance.now();
+    const dt = now - lastFrameTime;
+    lastFrameTime = now;
+    update(dt / 1000);
+    draw();
+    window.requestAnimationFrame(loop);
+}
+loop();
+
+function update(dt) {
+    [grid, prev] = [prev, grid];
+    for (let x = 0; x < SIZE; x++) {
+        for (let y = 0; y < SIZE; y++) {
+            diffuse(x, y, dt);
+        }
+    }
+}
+
+function draw() {
+    const image = context.createImageData(SIZE, SIZE);
+    for (let x = 0; x < SIZE; x++) {
+        for (let y = 0; y < SIZE; y++) {
+            const g = grid[index(x, y)];
+            let c = Math.clamp(g.a - g.b);
+            c = colour(c);
+            pixel(image, x, y, c.r, c.g, c.b);
+        }
+    }
+    context.putImageData(image, 0, 0);
+}
+
+function colour(i) {
+    const c1 = settings.color1;
+    const c2 = settings.color2;
+    const c3 = settings.color3;
+    return {
+        r: Math.lerpArray([c1[0], c2[0], c3[0]], i) / 255,
+        g: Math.lerpArray([c1[1], c2[1], c3[1]], i) / 255,
+        b: Math.lerpArray([c1[2], c2[2], c3[2]], i) / 255
+    };
+}
+
+function diffuse(x, y, dt) {
+    const i = index(x, y);
+    const a = prev[i].a;
+    const b = prev[i].b;
+    const da = settings.diffusionA;
+    const db = settings.diffusionB;
+    const f = settings.feedRate;
+    const k = settings.killRate;
+    const t = dt * settings.timescale;
+    grid[i].a = Math.clamp(a + (da * laplaceA(x, y) - a * b * b + f * (1 - a)) * t);
+    grid[i].b = Math.clamp(b + (db * laplaceB(x, y) + a * b * b - (k + f) * b) * t);
+}
+
+function pixel(imageData, x, y, r, g, b, a = 1) {
+    const i = index(x, y) * 4;
+    imageData.data[i + 0] = Math.floor(r * 255);
+    imageData.data[i + 1] = Math.floor(g * 255);
+    imageData.data[i + 2] = Math.floor(b * 255);
+    imageData.data[i + 3] = Math.floor(a * 255);
+}
+
+function index(x, y) {
+    return x + y * SIZE;
+}
+
+function wrap(a, x, y) {
+    if (x < 0) { x += SIZE; }
+    if (y < 0) { y += SIZE; }
+    if (x >= SIZE) { x -= SIZE; }
+    if (y >= SIZE) { y -= SIZE; }
+    return a[index(x, y)];
+}
+
+function laplaceA(x, y) {
+    return convolve(grid, MATRIX, x, y, 'a');
+}
+
+function laplaceB(x, y) {
+    return convolve(grid, MATRIX, x, y, 'b');
+}
+
+function convolve(a, m, x, y, p) {
+    let sum = 0;
+    sum += wrap(a, x - 1, y - 1)[p] * m[0];
+    sum += wrap(a, x    , y - 1)[p] * m[1];
+    sum += wrap(a, x + 1, y - 1)[p] * m[2];
+    sum += wrap(a, x - 1, y    )[p] * m[3];
+    sum += wrap(a, x    , y    )[p] * m[4];
+    sum += wrap(a, x + 1, y    )[p] * m[5];
+    sum += wrap(a, x - 1, y + 1)[p] * m[6];
+    sum += wrap(a, x    , y + 1)[p] * m[7];
+    sum += wrap(a, x + 1, y + 1)[p] * m[8];
+    return sum;
+}
+
+// Input
+const hammer = new Hammer.Manager(canvas, { recognizers: [[Hammer.Pan]] });
+hammer.on("pan", function(e) {
+    const r = settings.drawRadius;
+    for (let x = e.center.x - r; x < e.center.x + r; x++) {
+        for (let y = e.center.y - r; y < e.center.y + r; y++) {
+            grid[x + y * SIZE].b = 1;
+        }
+    }
+});
+
+// Controls
+const gui = new dat.GUI();
+for (let i in settings) {
+    if (!settings.hasOwnProperty(i)) { continue; }
+    switch (i) {
+        case 'preset':
+            gui.add(settings, 'preset', Object.keys(presets)).onChange(v => {
+                settings.feedRate = presets[v].feedRate;
+                settings.killRate = presets[v].killRate;
+                for (var i in gui.__controllers) {
+                    gui.__controllers[i].updateDisplay();
+                }
+            });
+            break;
+        case 'color1':
+        case 'color2':
+        case 'color3':
+            gui.addColor(settings, i);
+            break;
+        default:
+            gui.add(settings, i);
+            break;
+    }
+}
+
+</script>

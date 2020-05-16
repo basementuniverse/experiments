@@ -1,0 +1,198 @@
+<style>
+
+canvas {
+    margin: 2em;
+    border: 1px black solid;
+}
+
+</style>
+<canvas></canvas>
+<script src="libs/common.js"></script>
+<script src="libs/dat.gui.min.js"></script>
+<script src="libs/hammer.min.js"></script>
+<script>
+
+const SIZE = 600;
+const MAX = 100;
+const ZOOM_AMOUNT = 0.05;
+
+const settings = {
+    scale: 4,
+    offsetx: -0.15,
+    offsety: 0.001,
+    showJuliaSet: false,
+    preset: 'a',
+    a: 1,
+    b: 1
+};
+const presets = {
+    a: { a: -0.4, b: 0.6 },
+    b: { a: 0.285, b: 0 },
+    c: { a: 0.285, b: 0.1 },
+    d: { a: 0.45, b: 0.1428 },
+    e: { a: -0.70176, b: -0.3842 },
+    f: { a: -0.835, b: -0.2321 },
+    g: { a: -0.8, b: 0.156 },
+    h: { a: -0.7269, b: 0.1889 },
+    i: { a: 0, b: -0.8 },
+};
+
+const canvas = document.querySelector('canvas');
+const context = canvas.getContext('2d');
+
+canvas.width = canvas.style.width = SIZE;
+canvas.height = canvas.style.height = SIZE;
+
+const index = (x, y) => y * (SIZE * 4) + (x * 4);
+
+function setPixel(imageData, x, y, r, g, b, a = 1) {
+    const i = index(x, y);
+    imageData.data[i + 0] = Math.round(r * 255);
+    imageData.data[i + 1] = Math.round(g * 255);
+    imageData.data[i + 2] = Math.round(b * 255);
+    imageData.data[i + 3] = Math.round(a * 255);
+}
+
+const COLOURS = [
+    [0, 0, 0],
+    [1, 0, 0],
+    [1, 1, 0],
+    [0, 1, 0],
+    [0, 1, 1],
+    [0, 0, 1],
+    [1, 0, 1],
+    [1, 1, 1]
+];
+
+function getColor(i) {
+    return {
+        r: Math.lerpArray(COLOURS.map(c => c[0]), i),
+        g: Math.lerpArray(COLOURS.map(c => c[1]), i),
+        b: Math.lerpArray(COLOURS.map(c => c[2]), i)
+    };
+}
+
+function draw() {
+    const imageData = context.createImageData(SIZE, SIZE);
+    for (let x = 0; x < SIZE; x++) {
+        for (let y = 0; y < SIZE; y++) {
+
+            // Translate and scale position
+            const s = vec.mul(vec.add(
+                vec.map(vec(x, y), i => Math.remap(i, 0, SIZE, -0.5, 0.5)),
+                vec(settings.offsetx, settings.offsety)
+            ), settings.scale);
+
+            // Constant c
+            // If showing Julia Set, set c to a complex constant, otherwise set
+            // to the current position
+            const c = settings.showJuliaSet ? vec(settings.a, settings.b) : vec(s);
+
+            // Iterated value z
+            let z = vec(s);
+
+            // Counter n
+            let n = 0;
+            while (n++ < MAX) {
+                /*
+
+                https://en.wikipedia.org/wiki/Mandelbrot_set
+
+                Znew = Zold^2 + c
+                c is a complex number (a+bi), represented on the canvas plane
+                fractal shows set of c for which f(z) is bounded when iterated from 0
+
+                note:
+                (a+bi)^2 = a^2 + 2abi - b^2 => (a^2 - b^2, 2ab)
+
+                */
+                z = vec.add(vec(z.x * z.x - z.y * z.y, 2 * z.x * z.y), c);
+                if (Math.abs(z.x, z.y) > 16) {
+                    break;
+                }
+            }
+
+            // Resulting grayscale value
+            let a = Math.remap(n, 0, MAX, 0, 1);
+            // a = Math.sqrt(a);
+            let color = getColor(a);
+            setPixel(imageData, x, y, color.r, color.g, color.b);
+        }
+    }
+    context.putImageData(imageData, 0, 0);
+}
+draw();
+
+// DAT GUI
+const gui = new dat.GUI();
+for (let i in settings) {
+    if (!settings.hasOwnProperty(i)) { continue; }
+    let setting;
+    switch (i) {
+        case 'preset':
+            setting = gui.add(settings, 'preset', Object.keys(presets)).onChange(v => {
+                settings.a = presets[v].a;
+                settings.b = presets[v].b;
+                for (var i in gui.__controllers) {
+                    gui.__controllers[i].updateDisplay();
+                }
+            });
+            break;
+        default: setting = gui.add(settings, i); break;
+    }
+    if (typeof settings[i] !== 'function') {
+        setting.onFinishChange(v => draw()).listen();
+    }
+}
+
+// Input
+function debounce(func, wait, immediate) {
+    var timeout;
+    return function() {
+        var context = this, args = arguments;
+        var later = function() {
+            timeout = null;
+            if (!immediate) func.apply(context, args);
+        };
+        var callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) func.apply(context, args);
+    };
+};
+const debounceDraw = debounce(draw, 200);
+const hammer = new Hammer.Manager(canvas, { recognizers: [[Hammer.Pan]] });
+let dragStart = null;
+hammer.on("panstart", function(e) {
+    dragStart = vec.add(vec.mul(e.center, 1 / SIZE), vec(settings.offsetx, settings.offsety));
+});
+hammer.on("panend", function(e) {
+    dragStart = null;
+});
+hammer.on("pan", function(e) {
+    let d = vec.add(vec.mul(e.center, 1 / SIZE), vec(settings.offsetx, settings.offsety));
+    d = vec.sub(dragStart, d);
+    settings.offsetx += d.x;
+    settings.offsety += d.y;
+    debounceDraw();
+});
+window.addEventListener("keydown", function(e) {
+    // console.log(e.key);
+    switch (e.key) {
+        default: break;
+    }
+});
+window.addEventListener("wheel", function(e) {
+    if (e.deltaY > 0) {
+        settings.scale *= 1 + ZOOM_AMOUNT;
+        settings.offsetx *= 1 - ZOOM_AMOUNT;
+        settings.offsety *= 1 - ZOOM_AMOUNT;
+    } else if (e.deltaY < 0) {
+        settings.scale *= 1 - ZOOM_AMOUNT;
+        settings.offsetx *= 1 + ZOOM_AMOUNT;
+        settings.offsety *= 1 + ZOOM_AMOUNT;
+    }
+    debounceDraw();
+});
+
+</script>

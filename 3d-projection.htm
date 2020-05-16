@@ -1,0 +1,518 @@
+<style>
+
+canvas {
+    width: 600px;
+    height: 600px;
+    border: 1px black solid;
+}
+
+</style>
+<canvas></canvas>
+<script>
+
+const colors = [
+    'transparent',
+    'black',
+    'red',
+    'green',
+    'blue'
+];
+
+const colorMap1 = [
+    '000000000000000000000000000000',
+    '001111101111100111001111100000',
+    '000010001000001000100010000000',
+    '000010001000001000000010000000',
+    '000010001111000111000010000000',
+    '000010001000000000100010000000',
+    '000010001000001000100010000000',
+    '000010001111100111000010000000',
+    '000000000000000000000000000000',
+    '000000000000000000000000000000'
+];
+
+const colorMap2 = [
+    '222222222222222222222222222222',
+    '222222222222222222222222222222',
+    '330000000000000000000000000044',
+    '330000000000000000000000000044',
+    '330000000000000000000000000044',
+    '330000000000000000000000000044',
+    '330000000000000000000000000044',
+    '330000000000000000000000000044',
+    '111111111111111111111111111111',
+    '111111111111111111111111111111'
+];
+
+const colorMap3 = [
+    '000000000000000000000000000000',
+    '000000000000000000000000000000',
+    '000000000000000000000000000000',
+    '000000000001111111100000000000',
+    '000000000001111111100000000000',
+    '000000000001111111100000000000',
+    '000000000001111111100000000000',
+    '000000000000000000000000000000',
+    '000000000000000000000000000000',
+    '000000000000000000000000000000'
+];
+
+const colorMap4 = [
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000111110111111111110000000110000000000000000001000000000000000000000000',
+'000000000000000000000011001111111111100000000000000000001000000111111000000100000000000000',
+'000000000000000000000000000001111111100000000000000000000011111111111111100111000000000000',
+'000000000000000111000011100001111111000000000011111100111111111111111111111111111111100000',
+'000000100000000000000000010000111110000000000111111111111111111111111111111111111111000000',
+'000001111111111111111110110001111000010002001110111111111111111111111111111111100110000000',
+'000001111111111111111000000000110000000002000100111111111111111111111111111000010000000000',
+'000001100001111111110000110000000000000022001111111111111111111111111111111000010000000000',
+'000000000000111111111110111100000000000000111111111111111111111111111111111000000000000000',
+'000000000000011111111111111100000000000000111111111111111111111111111111111000000000000000',
+'000000000000001111111111111000000000000001100101111111111111111111111111100000000000000000',
+'000000000000001111111111110000000000000011000001011111111111111111111110000100000000000000',
+'000000000000001111111111100000000000000000000000000111111111111111111100001000000000000000',
+'000000000000001111111111000000000000000000000000001111111111111111111110000000000000000000',
+'000000000000000011111110000000000000000001111000000111111111111111111110000000000000000000',
+'000000000000000001110000000000000000000011111111110111100011111111111100000000000000000000',
+'000000000000000000110000000000000000000111111111110011110001111011110000000000000000000000',
+'000000000000000000110100000000000000001111111111111011100001110001100000000000000000000000',
+'000000000000000000001100000000000000000111111111111101000000100001110000000000000000000000',
+'000000000000000000000010000000000000000111111111111100000000100000000000000000000000000000',
+'000000000000000000000000111110000000000011111111111111000000000000000001000000000000000000',
+'000000000000000000000000111111100000000000000111111110000000000001000100000000000000000000',
+'000000000000000000000000111111110000000000000111111100000000000000101100000000000000000000',
+'000000000000000000000000111111111100000000000111111100000000000000000000000110000000000000',
+'000000000000000000000000111111111100000000000011111100000000000000000000000000000000000000',
+'000000000000000000000000011111111000000000000111111101000000000000000000110000000000000000',
+'000000000000000000000000001111111000000000000011111001000000000000000001111110000000000000',
+'000000000000000000000000001111110000000000000011111000000000000000000111111111000000000000',
+'000000000000000000000000001111100000000000000011110000000000000000000111111111000000000000',
+'000000000000000000000000001111000000000000000001100000000000000000000011001111000000000000',
+'000000000000000000000000011110000000000000000000000000000000000000000000000110000000000000',
+'000000000000000000000000011000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000011000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+'000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+];
+
+function sampleColor(long, lat, r) {
+    // if (long < 0) {
+    //     if (lat > rad(90)) {
+    //         return 'red';
+    //     }
+    //     return 'green';
+    // } else {
+    //     if (lat > rad(90)) {
+    //         return 'blue';
+    //     }
+    //     return 'yellow';
+    // }
+
+    // let x1 = long / Math.PI + 0.5;
+    // let y1 = lat / Math.PI;
+
+    console.log(long, lat);
+
+    // let x1 = r * long;
+    // let y1 = r * Math.log(Math.tan((lat + Math.PI / 2) / 2));
+
+    // console.log(x1, y1);
+
+    // const x2 = clamp(Math.floor(x1 * 30), 0, 29);
+    // const y2 = clamp(Math.floor(y1 * 10), 0, 9);
+
+    // return colors[colorMap2[y2][x2]];
+    return 'black';
+}
+const t_x = [];
+const t_y = [];
+function sampleColor2(v, r) {
+    const colorMapWidth = 90;
+    const colorMapHeight = 60;
+    // const colorMapWidth = 30;
+    // const colorMapHeight = 10;
+
+    let lat = Math.atan2(v.z, Math.sqrt(v.x * v.x + v.y * v.y));
+    let long = Math.atan2(v.y, v.x);
+
+    console.log(long, lat);
+
+    long /= Math.PI;
+    lat /= Math.PI;
+
+    long /= 2;
+    long += 0.5;
+
+    lat += 0.5;
+
+    // long = 1 - long;
+    lat = 1 - lat;
+
+    t_x.push(long);
+    t_y.push(lat);
+
+    // if (long > 0.5) {
+    //     if (lat > 0.5) {
+    //         return 'red';
+    //     }
+    //     return 'green';
+    // } else {
+    //     if (lat > 0.5) {
+    //         return 'blue';
+    //     }
+    //     return 'yellow';
+    // }
+
+    // const c = 2 * Math.PI * r;
+
+    // let x = r * long;
+    // let y = r * Math.log(Math.tan((lat + Math.PI / 2) / 2));
+
+    // x /= c;
+    // y /= c;
+
+    // x += 0.5;
+    // y += 0.5;
+
+    // // t_x.push(x);
+    // // t_y.push(y);
+
+    let x = long;
+    let y = lat;
+
+    const x2 = clamp(Math.floor(x * colorMapWidth), 0, colorMapWidth - 1);
+    const y2 = clamp(Math.floor(y * colorMapHeight), 0, colorMapHeight - 1);
+
+    return colors[colorMap4[y2][x2]];
+}
+function check_min_max() {
+    console.log(
+        Math.min.apply(null, t_x),
+        Math.max.apply(null, t_x),
+        Math.min.apply(null, t_y),
+        Math.max.apply(null, t_y)
+    );
+}
+
+class Vertex2 {
+    x;
+    y;
+    color;
+
+    constructor(x, y, color = 'black') {
+        this.x = parseFloat(x);
+        this.y = parseFloat(y);
+        this.color = color;
+    }
+}
+
+class Vertex3 {
+    x;
+    y;
+    z;
+    color;
+
+    constructor(x, y, z, color = 'black') {
+        this.x = parseFloat(x);
+        this.y = parseFloat(y);
+        this.z = parseFloat(z);
+        this.color = color;
+    }
+}
+
+class Cube {
+    vertices = [];
+    faces = [];
+
+    constructor(center, size) {
+        const d = size / 2;
+        this.vertices = [
+            new Vertex3(center.x - d, center.y - d, center.z + d),
+            new Vertex3(center.x - d, center.y - d, center.z - d),
+            new Vertex3(center.x + d, center.y - d, center.z - d),
+            new Vertex3(center.x + d, center.y - d, center.z + d),
+            new Vertex3(center.x + d, center.y + d, center.z + d),
+            new Vertex3(center.x + d, center.y + d, center.z - d),
+            new Vertex3(center.x - d, center.y + d, center.z - d),
+            new Vertex3(center.x - d, center.y + d, center.z + d)
+        ];
+        this.faces = [
+            [this.vertices[0], this.vertices[1], this.vertices[2], this.vertices[3]],
+            [this.vertices[3], this.vertices[2], this.vertices[5], this.vertices[4]],
+            [this.vertices[4], this.vertices[5], this.vertices[6], this.vertices[7]],
+            [this.vertices[7], this.vertices[6], this.vertices[1], this.vertices[0]],
+            [this.vertices[7], this.vertices[0], this.vertices[3], this.vertices[4]],
+            [this.vertices[1], this.vertices[6], this.vertices[5], this.vertices[2]]
+        ];
+    }
+}
+
+class Sphere {
+    vertices = [];
+
+    constructor(center, size) {
+        // const vertices = [];
+        // const subdiv = 20;
+        // for (let y = 0; y < subdiv; y++) {
+        //     for (let x = 0; x < subdiv; x++) {
+        //         vertices.push(pointFromAngle(
+        //             center,
+        //             size,
+        //             ((Math.PI * 2) / subdiv) * x,
+        //             (Math.PI / subdiv) * y
+        //         ));
+        //     }
+        // }
+        // this.vertices = vertices;
+
+        this.vertices = fib(center, size, 10000);
+    }
+}
+
+// returns a v3 with a point on the sphere surface from a long/lat
+// c is the center
+// r is the radius
+// s is the angle around the pole (longitude)
+// t is the height (latitude)
+function pointFromAngle(c, r, s, t) {
+    return new Vertex3(
+        c.x + (r * Math.cos(s) * Math.sin(t)),
+        c.y + (r * Math.sin(s) * Math.sin(t)),
+        c.z + (r * Math.cos(t))
+    );
+}
+
+// returns the angle and height (long/lat) from a 3d point
+function angleFromPoint(p) {
+    const phi = Math.atan(p.y / p.x);
+    const theta = Math.atan(p.y / p.z / Math.sin(phi));
+
+    return new Vertex2(phi, theta);
+}
+function angleFromPoint2(p, r) {
+    const lat = Math.acos(p.y / r);
+    const long = Math.atan(p.y / p.z);
+
+    return new Vertex2(long, lat);
+}
+
+// fibonacci sphere algorithm
+function fib(c, size, samples) {
+    const rnd = 1.0;
+    const vertices = [];
+    const offset = 2.0 / samples;
+    const increment = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < samples; i++) {
+        let y = ((i * offset) - 1) + (offset / 2);
+        let r = Math.sqrt(1 - Math.pow(y, 2));
+        let phi = ((i + rnd) % samples) * increment;
+        let x = Math.cos(phi) * r;
+        let z = Math.sin(phi) * r;
+
+        let v = new Vertex3(c.x + (x * size), c.y + (y * size), c.z + (z * size));
+        //let ll = angleFromPoint2(sub(v, c), size);
+        //v.color = sampleColor(ll.x, ll.y, size);
+        v.color = sampleColor2(sub(v, c), size);
+        if (v.color == 'transparent') { continue; }
+        vertices.push(v);
+    }
+
+    return vertices;
+}
+
+function lerp(a, b, i) {
+    return (1 - i) * a + i * b;
+}
+
+function dot(v1, v2) {
+    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
+function cross(v1, v2) {
+    return new Vertex3(
+        v1.y * v2.z - v1.z * v2.y,
+        v1.z * v2.x - v1.x * v2.z,
+        v1.x * v2.y - v1.y - v2.x
+    );
+}
+
+function norm(v) {
+    const l = len(v);
+    if (l != 0) {
+        return new Vertex3(
+            v.x / l,
+            v.y / l,
+            v.z / l
+        );
+    }
+    return v;
+}
+
+function len(v) {
+    return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+function sub(v1, v2) {
+    return new Vertex3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
+}
+
+function deg(rad) {
+    return (180 / Math.PI) * rad;
+}
+
+function rad(deg) {
+    return (Math.PI / 180) * deg;
+}
+
+function clamp(n, min, max) {
+    return Math.max(min, Math.min(max, n));
+}
+
+function render(mesh, context, dx, dy) {
+    context.clearRect(0, 0, 2 * dx, 2 * dy);
+    
+    // for (let i = 0; i < mesh.faces.length; i++) {
+    //     const face = mesh.faces[i];
+    //     let p = project(face[0]);
+    //     context.beginPath();
+    //     context.moveTo(p.x + dx, -p.y + dy);
+    //     for (let j = 1; j < face.length; j++) {
+    //         p = project(face[j]);
+    //         context.lineTo(p.x + dx, -p.y + dy);
+    //     }
+    //     context.closePath();
+    //     context.stroke();
+    //     context.fill();
+    // }
+
+    const c = new Vertex3(0, 800, 0);
+
+    for (let i = 0; i < mesh.vertices.length; i++) {
+        const p = project(mesh.vertices[i]);
+        context.fillStyle = p.color;
+
+        let d = dot(norm(c), norm(sub(mesh.vertices[i], c)));
+        if (d > 0) {
+            context.globalAlpha = lerp(0.1, 0.5, 1 - d);
+        } else {
+            context.globalAlpha = 1;
+        }
+
+        let s = lerp(2, 1, (len(mesh.vertices[i]) - 500) / 600);
+        context.beginPath();
+        context.arc(p.x + dx, -p.y + dy, s, 0, Math.PI * 2);
+        context.fill();
+
+        // context.fillRect(p.x + dx, -p.y + dy, 1, 1);
+    }
+}
+
+function orthographicProjection(v) {
+    return new Vertex2(v.x, v.z, v.color);
+}
+
+function perspectiveProjection(v) {
+    const d = 300;
+    const r = d / v.y;
+
+    return new Vertex2(r * v.x, r * v.z, v.color);
+}
+
+const renderMode = perspectiveProjection;
+
+function project(v) {
+    return renderMode(v);
+}
+
+(() => {
+    const canvas = document.querySelector('canvas');
+    const context = canvas.getContext('2d');
+    
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    
+    const dx = canvas.width / 2;
+    const dy = canvas.height / 2;
+
+    context.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    context.fillStyle = 'rgba(0, 255, 0, 0.1)';
+
+    const center = new Vertex3(0, 800, 0);
+    const cube = new Cube(center, 300);
+    const sphere = new Sphere(center, 300);
+
+    let shape = sphere;
+
+    render(shape, context, dx, dy);
+
+    const mouse = {
+        position: new Vertex2(0, 0),
+        down: false
+    };
+
+    canvas.addEventListener('mousedown', e => {
+        mouse.down = true;
+        mouse.position.x = e.clientX;
+        mouse.position.y = e.clientY;
+    });
+    document.addEventListener('mouseup', e => {
+        mouse.down = false;
+    });
+    document.addEventListener('mousemove', e => {
+        if (mouse.down) {
+            var theta = (e.clientX - mouse.position.x) * Math.PI / 360;
+            var phi = (e.clientY - mouse.position.y) * Math.PI / 180;
+
+            for (var i = 0; i < shape.vertices.length; ++i) {
+                rotate(shape.vertices[i], center, theta, phi);
+            }
+
+            mouse.position.x = e.clientX;
+            mouse.position.y = e.clientY;
+
+            render(shape, context, dx, dy);
+        }
+    });
+    
+    function rotate(v, center, theta, phi) {
+        const ct = Math.cos(theta);
+        const st = Math.sin(theta);
+        const cp = Math.cos(phi);
+        const sp = Math.sin(phi);
+
+        const x = v.x - center.x;
+        const y = v.y - center.y;
+        const z = v.z - center.z;
+
+        v.x = ct * x - st * cp * y + st * sp * z + center.x;
+        v.y = st * x + ct * cp * y - ct * sp * z + center.y;
+        v.z = sp * y + cp * z + center.z;
+    }
+})();
+
+</script>

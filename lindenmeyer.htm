@@ -1,0 +1,220 @@
+<canvas></canvas>
+<script src="libs/common.js"></script>
+<script>
+
+const algae = {
+    variables: ['a', 'b'],
+    constants: [],
+    axiom: ['a'],
+    rules: {
+        a: ['a', 'b'],
+        b: ['a']
+    }
+};
+
+const cantorDust = {
+    variables: ['a', 'b'],
+    constants: [],
+    axiom: ['a'],
+    rules: {
+        a: ['a', 'b', 'a'],
+        b: ['b', 'b', 'b']
+    }
+};
+
+const fractalTree = {
+    variables: ['a', 'b'],
+    constants: ['[', ']'],
+    axiom: ['a'],
+    rules: {
+        a: ['b', '[', 'a', ']', 'a'],
+        b: ['b', 'b']
+    }
+};
+
+const kochCurve = {
+    variables: ['f'],
+    constants: ['+', '-'],
+    axiom: ['f'],
+    rules: {
+        f: ['f', '+', 'f', '-', 'f', '-', 'f', '+', 'f']
+    }
+};
+
+const sierpinskiTriangle = {
+    variables: ['f', 'g'],
+    constants: ['+', '-'],
+    axiom: ['f', '-', 'g', '-', 'g'],
+    rules: {
+        f: ['f', '-', 'g', '+', 'f', '+', 'g', '-', 'f'],
+        g: ['g', 'g']
+    }
+};
+
+const dragonCurve = {
+    variables: ['x', 'y'],
+    constants: ['f', '+', '-'],
+    axiom: ['f', 'x'],
+    rules: {
+        x: ['x', '+', 'y', 'f', '+'],
+        y: ['-', 'f', 'x', '-', 'y']
+    }
+};
+
+const barnsleyFern = {
+    variables: ['x', 'f'],
+    constants: ['+', '-', '[', ']'],
+    axiom: ['x'],
+    rules: {
+        x: ['f', '+', '[', '[', 'x', ']', '-', 'x', ']', '-', 'f', '[', '-', 'f', 'x', ']', '+', 'x'],
+        f: ['f', 'f']
+    }
+};
+
+function lindenmeyer(system, s) {
+    if (!s) {
+        return [...system.axiom];
+    }
+    let result = [];
+    for (let c of s) {
+        if (system.variables.includes(c)) {
+            result = result.concat(system.rules[c]);
+        } else if (system.constants.includes(c)) {
+            result.push(c);
+        }
+    }
+    return result;
+}
+
+function generations(system, n) {
+    let s = lindenmeyer(system);
+    for (let i = n; i--;) {
+        s = lindenmeyer(system, s);
+    }
+    return s;
+}
+
+const SIZE = 800;
+const canvas = document.querySelector('canvas');
+const context = canvas.getContext('2d');
+canvas.height = canvas.width = canvas.style.height = canvas.style.width = SIZE;
+canvas.style.border = '1px black solid';
+
+function draw(s, instructions, scale, initialPosition, color) {
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    // context.clearRect(0, 0, SIZE, SIZE);
+    context.translate(SIZE * initialPosition.x, SIZE * initialPosition.y);
+    context.strokeStyle = color;
+    context.fillStyle = color;
+    for (let c of s) {
+        instructions[c](context, scale);
+    }
+}
+
+function drawLineSegment(c, scale, leaf = false, v = vec(0, -1)) {
+    c.beginPath();
+    c.moveTo(0, 0);
+    c.lineTo(v.x * scale, v.y * scale);
+    c.stroke();
+    c.translate(v.x * scale, v.y * scale);
+    if (leaf) {
+        c.beginPath();
+        c.arc(0, 0, 3, 0, Math.PI * 2);
+        c.fill();
+    }
+}
+
+draw(
+    generations(fractalTree, 6),
+    {
+        "a": (c, scale) => drawLineSegment(c, scale, true),
+        "b": (c, scale) => drawLineSegment(c, scale),
+        "[": (c) => {
+            c.save();
+            c.rotate(-Math.PI / 4);
+        },
+        "]": (c) => {
+            c.restore();
+            c.rotate(Math.PI / 4);
+        }
+    },
+    10,
+    vec(0.5, 1),
+    'red'
+);
+
+draw(
+    generations(kochCurve, 4),
+    {
+        "f": (c, scale) => drawLineSegment(c, scale, false, vec(1, 0)),
+        "+": (c) => {
+            c.rotate(-Math.PI / 2);
+        },
+        "-": (c) => {
+            c.rotate(Math.PI / 2);
+        }
+    },
+    10,
+    vec(0.1, 0.9),
+    'green'
+);
+
+draw(
+    generations(sierpinskiTriangle, 5),
+    {
+        "f": (c, scale) => drawLineSegment(c, scale, false, vec(1, 0)),
+        "g": (c, scale) => drawLineSegment(c, scale, false, vec(1, 0)),
+        "+": (c) => {
+            c.rotate(Math.radians(-120));
+        },
+        "-": (c) => {
+            c.rotate(Math.radians(120));
+        }
+    },
+    20,
+    vec(0.1, 0.1),
+    'blue'
+);
+
+draw(
+    generations(dragonCurve, 11),
+    {
+        "f": (c, scale) => drawLineSegment(c, scale, false, vec(1, 0)),
+        "-": (c) => {
+            c.rotate(-Math.PI / 2);
+        },
+        "+": (c) => {
+            c.rotate(Math.PI / 2);
+        },
+        "x": () => {},
+        "y": () => {}
+    },
+    10,
+    vec(0.6, 0.3),
+    'purple'
+);
+
+draw(
+    generations(barnsleyFern, 5),
+    {
+        "f": (c, scale) => drawLineSegment(c, scale),
+        "-": (c) => {
+            c.rotate(Math.radians(-25));
+        },
+        "+": (c) => {
+            c.rotate(Math.radians(25));
+        },
+        "[": (c) => {
+            c.save();
+        },
+        "]": (c) => {
+            c.restore();
+        },
+        "x": () => {}
+    },
+    10,
+    vec(0.5, 1),
+    'darkgreen'
+);
+
+</script>

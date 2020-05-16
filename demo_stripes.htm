@@ -1,0 +1,349 @@
+<style>
+
+* { margin: 0; padding: 0; }
+body { overflow: hidden; }
+canvas { width: 100%; height: 100%; }
+
+.title {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: black;
+    color: white;
+    padding: 20px;
+}
+
+.title h1 {
+    display: inline-block;
+    font-family: sans-serif;
+    margin: 30px 0 35px 100px;
+}
+
+.logo {
+    position: absolute;
+    background-color: white;
+    border: 4px black solid;
+    height: 24px;
+    width: 24px;
+    border-radius: 16px;
+    top: 52px;
+}
+
+.l1 {
+    left: 40px;
+}
+
+.l2 {
+    left: 55px;
+}
+
+.l3 {
+    left: 70px;
+}
+
+</style>
+<canvas></canvas>
+<div class="title">
+    <span class="logo l1"></span>
+    <span class="logo l2"></span>
+    <span class="logo l3"></span>
+    <h1 class="titletext"></h1>
+</div>
+<script src="libs/common.js"></script>
+<script src="libs/perlin.js"></script>
+<script src="libs/dat.gui.min.js"></script>
+<script>
+
+const canvas = document.querySelector('canvas');
+const context = canvas.getContext('2d');
+let totalTime = 0;
+let wind = vec();
+
+const settings = {
+    preset: 'default'
+};
+
+const presets = {
+    default: {
+        titleText: 'Stripes Demo 1',
+        lineColour: '#5470fd',
+        compositeMode: 'lighter',
+        gradient1: '#FC466B',
+        gradient2: '#3F5EFB',
+        gradientDirection: 27,
+        lineDirection: 1.476,
+        lineRange: 0.9,
+        lineCount: 170,
+        scale: 0.0014,
+        timeScale: 0.1,
+        maxSpeed: 24,
+        amount: 0.51,
+        windSpeed: 0.66,
+        segments: 350,
+        weightScroll: 1190,
+        inputRange: 360,
+        inputAmount: 0.62,
+        minWeight: 10,
+        maxWeight: 20,
+        minAlpha: 0.05,
+        maxAlpha: 0.6
+    },
+    preset_b: {
+        titleText: 'Stripes Demo 2',
+        lineColour: '#ede55d',
+        compositeMode: 'screen',
+        gradient1: '#ffd100',
+        gradient2: '#ff7800',
+        gradientDirection: 50,
+        lineDirection: 0.387,
+        lineRange: 0.9,
+        lineCount: 90,
+        scale: 0.0007,
+        timeScale: 0.1,
+        maxSpeed: 111,
+        amount: 0.312,
+        windSpeed: 0.453,
+        segments: 350,
+        weightScroll: 1190,
+        inputRange: 360,
+        inputAmount: 0.62,
+        minWeight: 14,
+        maxWeight: 65,
+        minAlpha: 0.01,
+        maxAlpha: 0.8
+    },
+    preset_c: {
+        titleText: 'Stripes Demo 3',
+        lineColour: '#82ff98',
+        compositeMode: 'source-over',
+        gradient1: '#64e87b',
+        gradient2: '#43628e',
+        gradientDirection: 350,
+        lineDirection: 1.544,
+        lineRange: 2.55,
+        lineCount: 172,
+        scale: 0.0005,
+        timeScale: 0.14,
+        maxSpeed: 22,
+        amount: 0.399,
+        windSpeed: 0.572,
+        segments: 350,
+        weightScroll: 290,
+        inputRange: 360,
+        inputAmount: 0.62,
+        minWeight: 38,
+        maxWeight: 100,
+        minAlpha: 0.01,
+        maxAlpha: 0.8
+    },
+    preset_d: {
+        titleText: 'Stripes Demo 4',
+        lineColour: '#78ffef',
+        compositeMode: 'screen',
+        gradient1: '#89d7e8',
+        gradient2: '#334457',
+        gradientDirection: 327,
+        lineDirection: -0.703,
+        lineRange: 0.61,
+        lineCount: 64,
+        scale: 0.0023,
+        timeScale: 0.14,
+        maxSpeed: 184,
+        amount: 0.085,
+        windSpeed: 0.898,
+        segments: 320,
+        weightScroll: 390,
+        inputRange: 360,
+        inputAmount: 0.62,
+        minWeight: 40,
+        maxWeight: 72,
+        minAlpha: 0.095,
+        maxAlpha: 0.65
+    }
+};
+
+const mouse = {
+    position: vec(),
+    down: false,
+    amount: 0
+};
+canvas.onmousedown = () => { mouse.down = true; };
+canvas.onmouseup = () => { mouse.down = false; };
+canvas.onmouseout = () => { mouse.down = false; };
+canvas.onmousemove = e => {
+    mouse.position.x = e.offsetX;
+    mouse.position.y = e.offsetY;
+};
+
+function updateSettings(preset) {
+    for (let i in presets[preset]) {
+        settings[i] = presets[preset][i];
+    }
+}
+updateSettings('default');
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.onresize = resize;
+resize();
+
+function updateTitle() {
+    document.querySelector('.titletext').innerText = settings.titleText || 'Untitled';
+}
+updateTitle();
+
+function updateGradient() {
+    document.body.style.background = `linear-gradient(${settings.gradientDirection}deg, ${settings.gradient1} 0%, ${settings.gradient2} 100%)`;
+    document.querySelector('.l3').style.backgroundColor = settings.lineColour;
+    document.querySelector('.l2').style.backgroundColor = settings.gradient1;
+    document.querySelector('.l1').style.backgroundColor = settings.gradient2;
+}
+updateGradient();
+
+function loop() {
+    update();
+    draw();
+    window.requestAnimationFrame(loop);
+}
+loop();
+
+function update() {
+    totalTime += 1 / 60;
+    mouse.amount += mouse.down ? 0.05 : -0.05;
+    mouse.amount = Math.clamp(mouse.amount);
+    wind = vec.rot(vec(1, 0), -settings.lineDirection + Math.PI / 2);
+}
+
+function draw() {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.globalCompositeOperation = settings.compositeMode;
+
+    const theta = (settings.lineRange * 2) / settings.lineCount;
+    const d = settings.lineDirection - Math.PI;
+    const r = Math.max(canvas.width, canvas.height) + 100;
+    const c = vec.mul(vec(canvas.width, canvas.height), 0.5);
+    for (let a = 0; a < settings.lineRange; a += theta) {
+        let p1 = vec(r * Math.sin(d + a), r * Math.cos(d + a));
+        let p2 = vec(r * Math.sin(d - a), r * Math.cos(d - a));
+        randomLine(vec.add(p1, c), r + 10, c);
+        randomLine(vec.add(p2, c), r + 10, c);
+    }
+}
+
+function randomLine(p, r, c) {
+    context.strokeStyle = settings.lineColour;
+    let v = vec();
+    let pp = vec(p);
+    for (let i = 0; i < settings.segments; i++) {
+        if (Math.abs(p.x - c.x) > r || Math.abs(p.y - c.y) > r) {
+            break;
+        }
+        v = vec.add(v, getNoiseVector(p, totalTime));
+        if (vec.len(v) > settings.maxSpeed) {
+            v = vec.mul(vec.nor(v), settings.maxSpeed);
+        }
+
+        // Handle input
+        let dp = vec.sub(mouse.position, p);
+        let lp = vec.len(dp);
+        dp = vec.nor(dp);
+        if (lp < settings.inputRange) {
+            v = vec.add(v, vec.mul(
+                dp,
+                (1 - (lp / settings.inputRange)) * settings.inputAmount *
+                Math.smoothstep(0, 1, mouse.amount)
+            ));
+        }
+
+        pp = vec(p);
+        p = vec.add(p, vec.mul(v, settings.amount));
+
+        // Segment weight
+        let weightPosition = vec.add(p, vec(54839, 6542));
+        weightPosition.x += totalTime * settings.weightScroll;
+        let weight = getNoise(weightPosition, 1) * 0.5 + 0.5;
+        weight = Math.lerp(settings.minWeight, settings.maxWeight, weight);
+
+        // Segment alpha
+        let alpha = Math.lerp(settings.minAlpha, settings.maxAlpha, p.y / canvas.height);
+        alpha *= Math.lerp(0.2, 1, vec.len(vec.sub(p, pp)) / settings.maxSpeed);
+        if (i > settings.segments - 100) {
+            alpha *= (settings.segments - i) / 100;
+        }
+        line(pp, p, weight, alpha);
+    }
+}
+
+function line(a, b, weight, alpha) {
+    context.lineWidth = weight;
+    context.globalAlpha = alpha;
+    context.beginPath();
+    context.moveTo(a.x, a.y);
+    context.lineTo(b.x, b.y);
+    context.stroke();
+}
+
+function getNoise(p, t) {
+    return noise.simplex3(p.x * settings.scale, p.y * settings.scale, t * settings.timeScale);
+}
+
+function getNoiseVector(p, t) {
+    let result = vec(
+        noise.simplex3(p.x * settings.scale, p.y * settings.scale, t * settings.timeScale),
+        noise.simplex3((p.x + 38929) * settings.scale, (p.y + 89147) * settings.scale, t * settings.timeScale)
+    );
+
+    // Apply wind
+    return vec(
+        Math.lerp(result.x, wind.x, settings.windSpeed),
+        Math.lerp(result.y, wind.y, settings.windSpeed)
+    );
+}
+
+// DAT GUI
+const gui = new dat.GUI();
+gui.add(settings, 'preset', Object.keys(presets)).onChange(v => {
+    updateSettings(v);
+    for (let i in gui.__controllers) {
+        gui.__controllers[i].updateDisplay();
+    }
+    updateTitle();
+    updateGradient();
+});
+gui.add(settings, 'titleText').onFinishChange(updateTitle);
+gui.addColor(settings, 'lineColour');
+gui.add(settings, 'compositeMode', [
+    'source-over',
+    'lighter',
+    'multiply',
+    'screen',
+    'overlay',
+    'color-dodge',
+    'color-burn',
+    'hard-light',
+    'soft-light'
+]);
+gui.addColor(settings, 'gradient1').onFinishChange(updateGradient);
+gui.addColor(settings, 'gradient2').onFinishChange(updateGradient);
+gui.add(settings, 'gradientDirection', 0, 360).onFinishChange(updateGradient);
+gui.add(settings, 'lineDirection', -Math.PI, Math.PI, 0.001);
+gui.add(settings, 'lineRange', 0, Math.PI);
+gui.add(settings, 'lineCount', 1, 1000);
+gui.add(settings, 'scale', 0.0001, 0.015, 0.0001);
+gui.add(settings, 'timeScale', 0, 1, 0.01);
+gui.add(settings, 'maxSpeed');
+gui.add(settings, 'amount', 0, 1, 0.001);
+gui.add(settings, 'windSpeed', 0, 1, 0.001);
+gui.add(settings, 'segments');
+gui.add(settings, 'weightScroll');
+gui.add(settings, 'inputRange', 50, 500);
+gui.add(settings, 'inputAmount', 0, 1, 0.001);
+gui.add(settings, 'minWeight', 1, 100);
+gui.add(settings, 'maxWeight', 1, 100);
+gui.add(settings, 'minAlpha', 0, 1);
+gui.add(settings, 'maxAlpha', 0, 1);
+
+</script>

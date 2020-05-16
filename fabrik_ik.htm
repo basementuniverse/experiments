@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+
+// little vector library
+const vec = (x, y) => ({ x: x || 0, y: y || 0 });
+vec.add = (a, b) => ({ x: a.x + b.x, y: a.y + b.y });
+vec.mul = (a, b) => ({ x: a.x * b,   y: a.y * b });
+vec.sub = (a, b) => vec.add(a, vec.mul(b, -1));
+vec.len = a => Math.sqrt(a.x * a.x + a.y * a.y);
+vec.nor = a => {
+    let len = vec.len(a);
+    return { x: a.x / len, y: a.y / len };
+};
+vec.dot = (a, b) => a.x * b.x + a.y * b.y;
+vec.rot = (a, r) => {
+    let s = Math.sin(r),
+        c = Math.cos(r);
+    return { x: c * a.x - s * a.y, y: s * a.x + c * a.y };
+}
+vec.eq = (a, b) => a.x == b.x && a.y == b.y;
+vec.rad = a => Math.atan2(a.y, a.x);
+
+// FABRIK
+const joints = [
+    { length: 64, position: vec(360, 300) },
+    { length: 91, position: vec(360, 390) },
+    { length: 28, position: vec(330, 390) },
+    { length: 56, position: vec(330, 330) },
+    { length: 18, position: vec(330, 310) },
+    { length: 12, position: vec(350, 310) }
+];
+const origin = vec(300, 300);
+let target = vec(100, 100);
+
+window.addEventListener('load', function() {
+    const canvas = document.querySelector('#main'),
+        context = canvas.getContext('2d'),
+        runButton = document.querySelector('#run');
+    canvas.width = 600;
+    canvas.height = 600;
+
+    // Initialise joint positions
+    let p = origin;
+    for (let i = 0, length = joints.length; i < length; i++) {
+        joints[i].position = p = vec.add(p, vec(joints[i].length, 0));
+    }
+
+    // Event handlers
+    canvas.addEventListener('click', function(e) {
+        target = vec(e.offsetX, e.offsetY);
+        draw(context);
+    });
+    runButton.addEventListener('click', function(e) {
+        fabrik();
+        draw(context);
+    });
+    draw(context);
+});
+
+function fabrik() {
+
+    // Backwards
+    const p = [target];
+    let c = target;
+    for (let i = joints.length; i--;) {
+        c = vec.add(c, vec.mul(vec.nor(vec.sub(i == 0 ? origin : joints[i - 1].position, c)), joints[i].length));
+        p.push(c);
+    }
+
+    // Forwards
+    c = origin;
+    for (let i = 0, length = joints.length; i < length; i++) {
+        c = vec.add(c, vec.mul(vec.nor(vec.sub(p[p.length - i - 2], c)), joints[i].length));
+        joints[i].position = c;
+    }
+}
+
+function draw(context) {
+    context.clearRect(0, 0, 600, 600);
+    context.fillStyle = 'black';
+    context.strokeStyle = 'black';
+    let c = origin;
+    for (let i = 0, length = joints.length; i < length; i++) {
+        drawPoint(context, c.x, c.y);
+        drawLine(context, c.x, c.y, joints[i].position.x, joints[i].position.y);
+        c = joints[i].position;
+    }
+    drawPoint(context, c.x, c.y);
+    drawCross(context, target.x, target.y);
+}
+
+function drawLine(context, x1, y1, x2, y2) {
+    context.save();
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(x1, y1);
+    context.lineTo(x2, y2);
+    context.stroke();
+    context.closePath();
+    context.restore();
+}
+
+function drawPoint(context, x, y) {
+    context.save();
+    context.beginPath();
+    context.arc(x, y, 3, 0, Math.PI * 2);
+    context.closePath();
+    context.fill();
+    context.restore();
+}
+
+function drawCross(context, x, y) {
+    drawLine(context, x - 3, y - 3, x + 3, y + 3);
+    drawLine(context, x - 3, y + 3, x + 3, y - 3);
+}
+
+</script>
+<style>
+
+canvas#main { height: 600px; width: 600px; border: 1px black solid; }
+button#run { position: absolute; top: 10px; left: 10px; }
+
+</style>
+</head>
+<body>
+<canvas id="main"></canvas>
+<button id="run">Run</button>
+</body>
+</html>

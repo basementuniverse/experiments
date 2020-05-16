@@ -1,0 +1,274 @@
+<canvas></canvas>
+<script src="libs/common.js"></script>
+<script src="libs/debug.js"></script>
+<script src="libs/dat.gui.min.js"></script>
+<script src="libs/hammer.min.js"></script>
+<script>
+
+// https://mikeash.com/pyblog/fluid-simulation-for-dummies.html
+
+class Fluid {
+    d = null;
+    d0 = null;
+    vx = null;
+    vy = null;
+    vx0 = null;
+    vy0 = null;
+
+    constructor() {
+        const n = SIZE * SIZE;
+        this.d = new Array(n).fill(0);
+        this.d0 = new Array(n).fill(0);
+        this.vx = new Array(n).fill(0);
+        this.vy = new Array(n).fill(0);
+        this.vx0 = new Array(n).fill(0);
+        this.vy0 = new Array(n).fill(0);
+    }
+
+    addDensity(x, y, amount) {
+        this.d[index(Math.floor(x), Math.floor(y))] += amount;
+    }
+
+    addVelocity(x, y, vx, vy) {
+        const i = index(Math.floor(x), Math.floor(y));
+        this.vx[i] += vx;
+        this.vy[i] += vy;
+    }
+
+    update(dt) {
+        // Diffuse velocities
+        diffuse(1, this.vx0, this.vx, settings.viscosity, dt);
+        diffuse(2, this.vy0, this.vy, settings.viscosity, dt);
+        
+        // Clean up
+        project(this.vx0, this.vy0, this.vx, this.vy);
+        
+        // Advect velocities
+        advect(1, this.vx, this.vx0, this.vx0, this.vy0, dt);
+        advect(2, this.vy, this.vy0, this.vx0, this.vy0, dt);
+        
+        // Clean up
+        project(this.vx, this.vy, this.vx0, this.vy0);
+        
+        // Diffuse the density
+        diffuse(0, this.d0, this.d, settings.diffusion, dt);
+
+        // Advect the density
+        advect(0, this.d, this.d0, this.vx, this.vy, dt);
+    }
+}
+
+const SIZE = 64;
+const ITERATIONS = 4;
+const SCALE = 10;
+const TIMESCALE = 100;
+
+// Canvas
+const canvas = document.querySelector('canvas');
+const context = canvas.getContext('2d');
+const fluid = new Fluid();
+let lastFrameTime = performance.now();
+
+// Settings
+const settings = {
+    diffusion: 0.03,
+    viscosity: 0.005,
+    velocity: 25,
+    amount: 5,
+    color1: [0, 0, 0],
+    color2: [0, 255, 100]
+};
+const gui = new dat.GUI();
+gui.add(settings, 'diffusion');
+gui.add(settings, 'viscosity');
+gui.add(settings, 'velocity');
+gui.add(settings, 'amount');
+gui.addColor(settings, 'color1');
+gui.addColor(settings, 'color2');
+
+// Input
+const mouse = { position: vec(), previousPosition: null, down: false };
+const hammer = new Hammer.Manager(canvas, { recognizers: [[Hammer.Pan]] });
+hammer.on("panstart", function(e) {
+    mouse.down = true;
+});
+hammer.on("panend", function(e) {
+    mouse.down = false;
+});
+hammer.on("pan", function(e) {
+    const p = vec(e.center.x, e.center.y);
+    if (mouse.previousPosition === null) {
+        mouse.previousPosition = vec(p);
+    } else {
+        mouse.previousPosition = vec(mouse.position);
+    }
+    mouse.position = p;
+});
+
+// Render loop
+function init() {
+    canvas.width = canvas.height = canvas.style.width = canvas.style.height = SIZE * SCALE;
+    Debug.initialise();
+    loop();
+}
+init();
+
+function loop() {
+    const t = performance.now();
+    const elapsedTime = t - lastFrameTime;
+    lastFrameTime = t;
+    update(elapsedTime / 1000);
+    draw();
+    window.requestAnimationFrame(loop);
+}
+
+function update(dt) {
+    const sdt = dt / TIMESCALE;
+    if (mouse.down) {
+        const v = vec.mul(vec.sub(mouse.position, mouse.previousPosition), settings.velocity);
+        const p = vec.mul(mouse.position, 1 / SCALE);
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                fluid.addDensity(p.x + dx, p.y + dy, settings.amount);
+                fluid.addVelocity(p.x + dx, p.y + dy, v.x, v.y);
+            }
+        }
+    }
+    fluid.update(sdt);
+    Debug.show('fps', Math.round(1 / dt));
+}
+
+function draw() {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < SIZE; i++) {
+        for (let j = 0; j < SIZE; j++) {
+            const x = i * SCALE;
+            const y = j * SCALE;
+            const d = fluid.d[index(i, j)];
+            context.fillStyle = lerpColor(settings.color1, settings.color2, d);
+            context.fillRect(x, y, SCALE, SCALE);
+        }
+    }
+    Debug.draw(context);
+}
+
+// Utility functions
+function lerpColor(a, b, i) {
+    return rgb(
+        Math.lerp(a[0], b[0], i),
+        Math.lerp(a[1], b[1], i),
+        Math.lerp(a[2], b[2], i)
+    );
+}
+
+function rgb(r, g, b) {
+    const f = x => Math.floor(x);
+    return `rgb(${f(r)}, ${f(g)}, ${f(b)})`;
+}
+
+function index(x, y) {
+    x = Math.clamp(x, 0, SIZE - 1);
+    y = Math.clamp(y, 0, SIZE - 1);
+    return x + y * SIZE;
+}
+
+function diffuse(b, x, x0, diff, dt) {
+    const a = dt * diff * (SIZE - 2) * (SIZE - 2);
+    linearSolve(b, x, x0, a, 1 + 6 * a);
+}
+
+function linearSolve(b, x, x0, a, c) {
+    const cr = 1 / c;
+    for (let k = 0; k < ITERATIONS; k++) {
+        for (let j = 1; j < SIZE - 1; j++) {
+            for (let i = 1; i < SIZE - 1; i++) {
+                x[index(i, j)] = (x0[index(i, j)] + a * (
+                    x[index(i + 1, j    )] +
+                    x[index(i - 1, j    )] +
+                    x[index(i    , j + 1)] +
+                    x[index(i    , j - 1)]
+                )) * cr;
+            }
+        }
+        setBounds(b, x);
+    }
+}
+
+function project(vx, vy, p, div) {
+    for (let j = 1; j < SIZE - 1; j++) {
+        for (let i = 1; i < SIZE - 1; i++) {
+            div[index(i, j)] = -0.5 * (
+                vx[index(i + 1, j    )] -
+                vx[index(i - 1, j    )] +
+                vy[index(i    , j + 1)] -
+                vy[index(i    , j - 1)]
+            ) / SIZE;
+            p[index(i, j)] = 0;
+        }
+    }
+    setBounds(0, div);
+    setBounds(0, p);
+    linearSolve(0, p, div, 1, 6);
+    for (let j = 1; j < SIZE - 1; j++) {
+        for (let i = 1; i < SIZE - 1; i++) {
+            vx[index(i, j)] -= 0.5 * (p[index(i + 1, j    )] - p[index(i - 1, j    )]) * SIZE;
+            vy[index(i, j)] -= 0.5 * (p[index(i    , j + 1)] - p[index(i    , j - 1)]) * SIZE;
+        }
+    }
+    setBounds(1, vx);
+    setBounds(2, vy);
+}
+
+function advect(b, d, d0, vx, vy, dt) {
+    let i0, i1, j0, j1;
+    let dtx = dt * (SIZE - 2);
+    let dty = dt * (SIZE - 2);
+    let s0, s1, t0, t1;
+    let temp1, temp2, x, y;
+    for (let j = 1; j < SIZE - 1; j++) {
+        for (let i = 1; i < SIZE - 1; i++) {
+            temp1 = dtx * vx[index(i, j)];
+            temp2 = dty * vy[index(i, j)];
+            x = i - temp1;
+            y = j - temp2;
+            
+            if (x < 0.5) { x = 0.5; }
+            if (x > SIZE + 0.5) { x = SIZE + 0.5; }
+            i0 = Math.floor(x);
+            i1 = i0 + 1;
+            
+            if (y < 0.5) { y = 0.5; }
+            if (y > SIZE + 0.5) { y = SIZE + 0.5; }
+            j0 = Math.floor(y);
+            j1 = j0 + 1;
+
+            s1 = x - i0;
+            s0 = 1 - s1;
+            t1 = y - j0;
+            t0 = 1 - t1;
+
+            d[index(i, j)] = (
+                s0 * (t0 * d0[index(i0, j0)] + t1 * d0[index(i0, j1)]) +
+                s1 * (t0 * d0[index(i1, j0)] + t1 * d0[index(i1, j1)])
+            );
+        }
+    }
+    setBounds(b, d);
+}
+
+function setBounds(b, x) {
+    for (let i = 1; i < SIZE - 1; i++) {
+        x[index(i, 0       )] = b == 2 ? -x[index(i, 1       )] : x[index(i, 1       )];
+        x[index(i, SIZE - 1)] = b == 2 ? -x[index(i, SIZE - 2)] : x[index(i, SIZE - 2)];
+    }
+    for (let i = 1; i < SIZE - 1; i++) {
+        x[index(0, i       )] = b == 1 ? -x[index(1, i       )] : x[index(1, i       )];
+        x[index(SIZE - 1, i)] = b == 1 ? -x[index(SIZE - 2, i)] : x[index(SIZE - 2, i)];
+    }
+    x[index(0       , 0       )] = 0.5 * (x[index(1       , 0       )] + x[index(0       , 1       )]);
+    x[index(0       , SIZE - 1)] = 0.5 * (x[index(1       , SIZE - 1)] + x[index(0       , SIZE - 2)]);
+    x[index(SIZE - 1, 0       )] = 0.5 * (x[index(SIZE - 2, 0       )] + x[index(SIZE - 1, 1       )]);
+    x[index(SIZE - 1, SIZE - 1)] = 0.5 * (x[index(SIZE - 2, SIZE - 1)] + x[index(SIZE - 1, SIZE - 2)]);
+}
+
+</script>

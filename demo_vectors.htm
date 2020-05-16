@@ -1,0 +1,174 @@
+<style>
+
+* {
+    margin: 0;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    background-color: #00bca4;
+}
+
+</style>
+<canvas></canvas>
+<script>
+
+// little vector library
+const vec = (x, y) => ({ x: x || 0, y: y || 0 });
+vec.add = (a, b) => ({ x: a.x + b.x, y: a.y + b.y });
+vec.mul = (a, b) => ({ x: a.x * b,   y: a.y * b });
+vec.sub = (a, b) => vec.add(a, vec.mul(b, -1));
+vec.len = a => Math.sqrt(a.x * a.x + a.y * a.y);
+vec.nor = a => {
+    let len = vec.len(a);
+    return { x: a.x / len, y: a.y / len };
+};
+vec.dot = (a, b) => a.x * b.x + a.y * b.y;
+vec.rot = (a, r) => {
+    let s = Math.sin(r),
+        c = Math.cos(r);
+    return { x: c * a.x - s * a.y, y: s * a.x + c * a.y };
+}
+vec.eq = (a, b) => a.x == b.x && a.y == b.y;
+vec.rad = a => Math.atan2(a.y, a.x);
+
+(() => {
+    const COLOR = 'white';
+    const TOTAL = 200;
+    const SPEED = 100;
+    const MIN_SIZE = 2;
+    const MAX_SIZE = 4;
+    const DISTANCE = 200;
+    const DOT_ALPHA = 0.7;
+    const LINE_ALPHA = 0.5;
+
+    const canvas = document.querySelector('canvas');
+    const context = canvas.getContext('2d');
+    let points = [];
+    
+    // Handle window resize
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.onresize = resize;
+    resize();
+
+    // Stores a point
+    class Point {
+        position;
+        velocity;
+        size;
+        disposed = false;
+        constructor(position, velocity, size) {
+            this.position = position;
+            this.velocity = velocity;
+            this.size = size;
+        }
+        update(dt) {
+            this.position = vec.add(this.position, vec.mul(this.velocity, dt));
+            if (
+                this.position.x < -DISTANCE ||
+                this.position.x > window.innerWidth + DISTANCE ||
+                this.position.y < -DISTANCE ||
+                this.position.y > window.innerHeight + DISTANCE
+            ) {
+                this.disposed = true;
+            }
+        }
+        draw(context) {
+            circle(context, this.position, this.size);
+            context.globalAlpha = DOT_ALPHA;
+            context.fill();
+        }
+    }
+
+    // Useful functions
+    const distance = (a, b) => vec.len(vec.sub(a, b));
+    const lerp = (a, b, i) => (1 - i) * a + i * b;
+
+    // Useful drawing functions
+    const circle = (context, p, r) => {
+        context.beginPath();
+        context.arc(p.x, p.y, r, 0, Math.PI * 2);
+        context.closePath();
+    };
+    const line = (context, a, b) => {
+        context.beginPath();
+        context.moveTo(a.x, a.y);
+        context.lineTo(b.x, b.y);
+    }
+
+    // Useful random generator functions
+    const randomPosition = () => vec(
+        Math.floor(Math.random() * window.innerWidth),
+        Math.floor(Math.random() * window.innerHeight)
+    );
+    const randomOffscreenPosition = () => Math.random() >= 0.5 ?
+        vec(
+            Math.floor(Math.random() * window.innerWidth),
+            Math.random() >= 0.5 ? -DISTANCE : window.innerHeight + DISTANCE
+        ) :
+        vec(
+            Math.random() >= 0.5 ? -DISTANCE : window.innerWidth + DISTANCE,
+            Math.floor(Math.random() * window.innerHeight)
+        );
+    const randomVelocity = () => vec(
+        Math.round(((Math.random() * 2) - 1) * SPEED),
+        Math.round(((Math.random() * 2) - 1) * SPEED)
+    );
+    const randomSize = () => Math.max(MIN_SIZE, Math.floor(Math.random() * MAX_SIZE));
+
+    // Initialise the demo by adding a bunch of random points
+    function initialise() {
+        for (let i = 0; i < TOTAL; i++) {
+            points.push(new Point(randomPosition(), randomVelocity(), randomSize()));
+        }
+    }
+    initialise();
+
+    // Create more points on click
+    window.onclick = e => {
+        points.push(new Point(vec(e.clientX, e.clientY), randomVelocity(), randomSize()));
+    };
+    
+    // Render a frame of the demo
+    function render() {
+        context.fillStyle = COLOR;
+        context.strokeStyle = COLOR;
+        context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+        // Add more points if old ones have been disposed
+        if (points.length < TOTAL) {
+            points.push(new Point(randomOffscreenPosition(), randomVelocity(), randomSize()));
+        }
+
+        // Render points
+        for (let point of points) {
+            point.update(1 / 60);
+            point.draw(context);
+        }
+
+        // Render lines between nearby points
+        context.save();
+        for (let i = 0; i < points.length; i++) {
+            for (let j = i + 1; j < points.length; j++) {
+                let d = distance(points[i].position, points[j].position);
+                if (d < DISTANCE) {
+                    line(context, points[i].position, points[j].position);
+                    context.globalAlpha = ((DISTANCE - d) / DISTANCE) * LINE_ALPHA;
+                    context.stroke();
+                }
+            }
+        }
+        context.restore();
+
+        // Dispose points that have gone off-screen
+        points = points.filter(p => !p.disposed);
+        requestAnimationFrame(render);
+    }
+    render();
+})();
+
+</script>
